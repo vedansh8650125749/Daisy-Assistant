@@ -22,6 +22,11 @@ from PIL import Image
 from threading import Thread
 import multiprocessing as mp
 import sys
+import logging
+
+
+
+logging.basicConfig(filename='Daisy.log',level=logging.INFO,format='%(asctime)s %(levelname)s: %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
 
 
 def configure():
@@ -66,10 +71,12 @@ def takeCommand():
         print('Recognizing....')
         query = r.recognize_google(audio, language='en-in')
         print(f"User said: {query}\n")
+        logging.info(f'User said: {query}')
 
     except Exception as e:
         #print(e)
         print('Can you say it Agian......')
+        logging.warning(f'Error recognizing user input: {e}')
         return "None"
     return query
 
@@ -210,17 +217,19 @@ def send_whatsapp_message(number, message):
     pwk.sendwhatmsg_instantly(f"+91{number}", message)
 
 def callback():
-    os.system("taskkill /f /im WindowsTerminal.exe")
-    pyautogui.hotkey('ctrl','f2')
-  
+    try:
+        os.system("taskkill /f /im WindowsTerminal.exe")
+    except:
+        pyautogui.hotkey('shift', 'f5')    
+        
 def setup_system_tray():
     try:
-        image = Image.open("./icon/voice.png") # replace with your icon's path
+        image = Image.open("C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\icon\\voice.png") # replace with your icon's path
         menu = pystray.Menu( pystray.MenuItem("Exit", callback) )
         tray_icon = pystray.Icon("name", image, "Daisy", menu)
         tray_icon.run()
     except Exception as e:
-        image = Image.open("./icon/voice_danger.png") # replace with your icon's path
+        image = Image.open("C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\icon\\voice_danger.png") # replace with your icon's path
         tray_icon = pystray.Icon("name", image, "Daisy")
         tray_icon.run()    
 
@@ -245,6 +254,7 @@ if __name__ == "__main__":
 
     while True:
     #if 1:  
+        logging.info('Daisy: ')
         query = takeCommand().lower()
 
         if 'wikipedia' in query:
@@ -662,7 +672,7 @@ if __name__ == "__main__":
         elif 'did you marry with my brother' in query:
             speak("as i am your AI assistant i cant do such things dear.") 
 
-        elif 'who made you'in query or 'who created you' in query:
+        elif 'made you'in query or 'create you' in query:
             speak('At first i was an idea, then two people put head together. And came up with me') 
 
         elif 'hi' in query or 'hello' in query:
@@ -913,30 +923,34 @@ if __name__ == "__main__":
          
         #maths and expert level questioning       
 
-        elif "calculate" in query:  
+        if "calculate" in query:
             question = query.replace('calculate','')
             client = wolframalpha.Client(os.getenv('app_id'))
-            indx = query.lower().split().index('calculate')
             res = client.query(question)
-            answer = next(res.results).text
-            speak(f'The answer is {answer}')
-            print(answer)
+            try:
+                answer = next(res.results).text
+                speak(f'The answer is {answer}')
+                print(answer)
+            except StopIteration:
+                speak("I'm sorry, I could not find an answer to that question.")
+
 
         elif "what is the" in query:  
-            question = query.replace('what is the','')
-            client = wolframalpha.Client(os.getenv('app_id'))
-            res = client.query(question)
-            answer = next(res.results).text
-            speak(f'The answer is {answer}')
-            print(answer)         
-       
-        elif "what is" in query:  
-            question = query.replace('what is','')
-            client = wolframalpha.Client(os.getenv('app_id'))
-            res = client.query(question)
-            answer = next(res.results).text
-            speak(f'The answer is {answer}')
-            print(answer) 
+            try:
+                question = query.replace('what is the','')
+                client = wolframalpha.Client(os.getenv('app_id'))
+                res = client.query(question)
+                answer = next(res.results).text
+                speak(f'The answer is {str(answer)}')
+                print(answer) 
+            except:
+                question = query.replace('what is the', '')
+                client = wolframalpha.Client(os.getenv('app_id'))
+                res = client.query(question)
+                answer = next(res.results).text
+                speak(f'The answer is {str(answer)}')
+                print(answer)
+        
 
         elif "difference between" in query:
             query = query.replace('difference between','')
@@ -946,13 +960,18 @@ if __name__ == "__main__":
         elif 'sms' in query or 'text' in query:
             account_sid = os.getenv('sms_api_id')
             auth_token = os.getenv('sms_api_auth')
+            #print(account_sid, auth_token)
             client = Client(account_sid, auth_token)  
             speak('tell me the number dear whose want to send the message')
             recipient = takeCommand()
+            number = f'+91{recipient}'
             system_number = os.getenv('sms_secret_number') 
+            #print(system_number)
             speak('tell me what should i write')
             msg = takeCommand()
-            message = client.messages.create(to='+91' + recipient, from_=system_number, body=msg)  
+            message = client.messages.create(to=number , from_=system_number, body=msg)  
+            print(message.sid)
+
 
         elif 'whatsapp message' in query:
             speak('tell me the number')
